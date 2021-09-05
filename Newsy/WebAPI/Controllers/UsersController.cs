@@ -20,7 +20,7 @@ namespace WebAPI.Controllers
             UserRepository = userRepository;
         }
 
-        // GET: api/Users
+        // GET: api/users
         [HttpGet]
         public async Task<IEnumerable<User>> GetUsers()
         {
@@ -32,7 +32,7 @@ namespace WebAPI.Controllers
             return result;
         }
 
-        // GET: api/Users/5
+        // GET: api/users/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUser([FromRoute] Guid id)
         {
@@ -53,9 +53,9 @@ namespace WebAPI.Controllers
             return Ok(user);
         }
 
-        // PUT: api/Users/5
+        // PUT: api/users/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser([FromQuery] Guid id, [FromBody] User user)
+        public async Task<IActionResult> PutUser([FromRoute] Guid id, [FromBody] User user)
         {
             if (!ModelState.IsValid)
             {
@@ -72,7 +72,7 @@ namespace WebAPI.Controllers
             return NoContent();
         }
 
-        // POST: api/Users
+        // POST: api/users
         [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> PostUser([FromBody] User user)
@@ -89,9 +89,9 @@ namespace WebAPI.Controllers
             return CreatedAtAction("GetUser", new { id = user.ID }, user);
         }
 
-        // DELETE: api/Users/5
+        // DELETE: api/users/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUser([FromQuery] Guid id)
+        public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
         {
             if (!ModelState.IsValid)
             {
