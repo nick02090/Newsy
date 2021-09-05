@@ -1,10 +1,10 @@
 ﻿using Domain;
-using Domain.Context;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using WebAPI.Context;
 using WebAPI.Repositories.Interfaces;
 
 namespace WebAPI.Repositories

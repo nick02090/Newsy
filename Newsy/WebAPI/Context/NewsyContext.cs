@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Domain;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Domain.Context
+namespace WebAPI.Context
 {
     public class NewsyContext : DbContext
     {
@@ -18,12 +19,12 @@ namespace Domain.Context
 
             #region Relations
             // User - Article (Many - One)
-            _ = modelBuilder.Entity<User>().HasMany(user => user.Articles).WithOne(article => article.Author).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<User>().HasMany(user => user.Articles).WithOne(article => article.Author).OnDelete(DeleteBehavior.Cascade);
             #endregion
 
             #region User specific properties
             // Unique e-mail
-            _ = modelBuilder.Entity<User>().HasIndex(user => user.Email).IsUnique();
+            modelBuilder.Entity<User>().HasIndex(user => user.Email).IsUnique();
             #endregion
         }
     }
