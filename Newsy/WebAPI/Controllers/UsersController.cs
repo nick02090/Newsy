@@ -1,10 +1,16 @@
 ﻿using Domain;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using WebAPI.Models;
 using WebAPI.Repositories.Interfaces;
+using WebAPI.Services.Interfaces;
 
 namespace WebAPI.Controllers
 {
@@ -14,10 +20,12 @@ namespace WebAPI.Controllers
     public class UsersController : ControllerBase
     {
         public IUserRepository UserRepository { get; }
+        public IUserService UserService { get; }
 
-        public UsersController(IUserRepository userRepository)
+        public UsersController(IUserRepository userRepository, IUserService userService)
         {
             UserRepository = userRepository;
+            UserService = userService;
         }
 
         // GET: api/users
@@ -84,18 +92,34 @@ namespace WebAPI.Controllers
 
             user = await UserRepository.CreateAsync(user);
 
+            var authResponse = await UserService.AuthenticateAsync(new AuthenticateRequest 
+            { 
+                Email = user.Email,
+                Password = user.Password
+            });
+
             user.Password = null;
 
-            return CreatedAtAction("GetUser", new { id = user.ID }, user);
+            return CreatedAtAction("GetUser", new { id = user.ID }, authResponse);
         }
 
         // DELETE: api/users/5
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            if (HttpContext.User.Identity is ClaimsIdentity identity)
+            {
+                var userID = Guid.Parse(identity.Claims.First(x => x.Type == "id").Value);
+                if (userID != id)
+                {
+                    return Unauthorized(new JsonResult(new { message = "You cannot delete another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
+                }
             }
 
             await UserRepository.DeleteAsync(id);

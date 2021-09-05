@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -5,9 +6,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Linq;
+using System.Text;
 using WebAPI.Context;
 using WebAPI.Repositories;
 using WebAPI.Repositories.Interfaces;
+using WebAPI.Services;
+using WebAPI.Services.Interfaces;
 using WebAPI.Settings;
 using WebAPI.Settings.Interfaces;
 
@@ -34,7 +41,38 @@ namespace WebAPI
             services.Configure<AppSettings>(appSettingsSection);
             var appSettings = appSettingsSection.Get<AppSettings>();
 
-            // TODO: Configure authentication
+            // configure jwt authentication
+            var key = Encoding.ASCII.GetBytes(appSettings.Secret);
+            services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(x =>
+            {
+                x.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var userRepository = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                        var userID = Guid.Parse(context.Principal.Claims.First(x => x.Type == "id").Value);
+                        var user = await userRepository.GetAsync(userID);
+                        if (user == null)
+                        {
+                            context.Fail("Unauthorized");
+                        }
+                    }
+                };
+                x.RequireHttpsMetadata = false;
+                x.SaveToken = true;
+                x.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false
+                };
+            });
 
             services.AddSingleton<IAppSettings>(appSettings);
             #endregion
@@ -54,6 +92,7 @@ namespace WebAPI
             #endregion
 
             #region Services
+            services.AddScoped<IUserService, UserService>();
             #endregion
 
             services.AddHttpsRedirection(options =>
@@ -79,6 +118,7 @@ namespace WebAPI
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
