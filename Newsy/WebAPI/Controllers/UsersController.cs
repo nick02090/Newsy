@@ -28,18 +28,32 @@ namespace WebAPI.Controllers
 
         // GET: api/users
         [HttpGet]
-        public async Task<IEnumerable<User>> GetUsers()
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ICollection<User>))]
+        public async Task<IActionResult> GetUsers([FromQuery] string lastName)
         {
-            var result = await UserRepository.GetAsync();
+            ICollection<User> result;
+            if (lastName != null)
+            {
+                result = await UserRepository.GetByLastName(lastName);
+            } else
+            {
+                result = await UserRepository.GetAsync();
+            }
+
             foreach (var r in result)
             {
                 r.HidePasswordRelatedData();
             }
-            return result;
+            return Ok(result);
         }
 
         // GET: api/users/5
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(User))]
         public async Task<IActionResult> GetUser([FromRoute] Guid id)
         {
             if (!ModelState.IsValid)
@@ -61,6 +75,9 @@ namespace WebAPI.Controllers
 
         // PUT: api/users/5
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> PutUser([FromRoute] Guid id, [FromBody] User user)
         {
             if (!ModelState.IsValid)
@@ -87,6 +104,8 @@ namespace WebAPI.Controllers
         // POST: api/users
         [AllowAnonymous]
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<IActionResult> PostUser([FromBody] User user)
         {
             if (!ModelState.IsValid)
@@ -105,6 +124,8 @@ namespace WebAPI.Controllers
         [AllowAnonymous]
         [Route("authenticate")]
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> AuthenticateAsync([FromBody] User user)
         {
             var entityAuth = await UserService.AuthenticateAsync(user);
@@ -116,6 +137,9 @@ namespace WebAPI.Controllers
 
         // DELETE: api/users/5
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
         {
             if (!ModelState.IsValid)

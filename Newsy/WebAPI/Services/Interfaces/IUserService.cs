@@ -6,7 +6,6 @@ namespace WebAPI.Services.Interfaces
     public interface IUserService
     {
         Task<dynamic> AuthenticateAsync(User user);
-        Task<User> GetByEmailAsync(string email);
         Task<User> RegisterAsync(User user);
     }
 }

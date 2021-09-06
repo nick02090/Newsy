@@ -6,7 +6,7 @@ namespace WebAPI.Repositories.Interfaces
 {
     public interface IBaseRepository<T>
     {
-        Task<IEnumerable<T>> GetAsync();
+        Task<ICollection<T>> GetAsync();
         Task<T> GetAsync(Guid id);
         Task<T> CreateAsync(T entity);
         Task<T> UpdateAsync(T entity);

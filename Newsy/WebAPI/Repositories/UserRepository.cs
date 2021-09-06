@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using WebAPI.Context;
 using WebAPI.Helpers;
@@ -36,7 +37,7 @@ namespace WebAPI.Repositories
             await NewsyContext.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<User>> GetAsync()
+        public async Task<ICollection<User>> GetAsync()
         {
             return await NewsyContext.Users.ToArrayAsync();
         }
@@ -44,6 +45,34 @@ namespace WebAPI.Repositories
         public async Task<User> GetAsync(Guid id)
         {
             return await NewsyContext.Users.FindAsync(id);
+        }
+
+        public async Task<User> GetByEmailAsync(string email)
+        {
+            return await NewsyContext.Users.Where(x => x.Email.Equals(email))
+                .Select(x => new User
+                {
+                    ID = x.ID,
+                    FirstName = x.FirstName,
+                    LastName = x.LastName,
+                    Email = x.Email,
+                    PasswordHash = x.PasswordHash,
+                    PasswordSalt = x.PasswordSalt
+                }).SingleOrDefaultAsync();
+        }
+
+        public async Task<ICollection<User>> GetByLastName(string lastName)
+        {
+            return await NewsyContext.Users.Where(x => x.LastName.Equals(lastName))
+                .Select(x => new User
+                {
+                    ID = x.ID,
+                    FirstName = x.FirstName,
+                    LastName = x.LastName,
+                    Email = x.Email,
+                    PasswordHash = x.PasswordHash,
+                    PasswordSalt = x.PasswordSalt
+                }).ToArrayAsync();
         }
 
         public async Task<User> UpdateAsync(User entity)

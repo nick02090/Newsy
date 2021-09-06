@@ -89,10 +89,12 @@ namespace WebAPI
 
             #region Repositories
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IArticleRepository, ArticleRepository>();
             #endregion
 
             #region Services
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IArticleService, ArticleService>();
             #endregion
 
             services.AddHttpsRedirection(options =>

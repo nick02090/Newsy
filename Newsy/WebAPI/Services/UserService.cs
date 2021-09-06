@@ -2,7 +2,6 @@
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,7 +26,7 @@ namespace WebAPI.Services
         public async Task<dynamic> AuthenticateAsync(User entity)
         {
             // Verify email
-            var userDb = await GetByEmailAsync(entity.Email);
+            var userDb = await UserRepository.GetByEmailAsync(entity.Email);
             if (userDb == null)
                 return null;
 
@@ -40,12 +39,6 @@ namespace WebAPI.Services
             userDb.HidePasswordRelatedData();
 
             return new { userDb, token };
-        }
-
-        public async Task<User> GetByEmailAsync(string email)
-        {
-            var users = await UserRepository.GetAsync();
-            return users.SingleOrDefault(x => x.Email == email);
         }
 
         public async Task<User> RegisterAsync(User user)
