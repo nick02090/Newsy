@@ -2,23 +2,24 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using WebAPI.Context;
+using WebAPI.Helpers;
 using WebAPI.Repositories.Interfaces;
 
 namespace WebAPI.Repositories
 {
     public class UserRepository : BaseRepository, IUserRepository
     {
-        private bool UserExists(Guid id) => NewsyContext.Users.Any(user => user.ID == id);
-
         public UserRepository(NewsyContext context) : base(context)
         {
         }
 
         public async Task<User> CreateAsync(User entity)
         {
+            // Never save password!!!
+            entity.Password = null;
+
             NewsyContext.Users.Add(entity);
             await NewsyContext.SaveChangesAsync();
             return entity;
@@ -47,17 +48,22 @@ namespace WebAPI.Repositories
 
         public async Task<User> UpdateAsync(User entity)
         {
-            NewsyContext.Entry(entity).State = EntityState.Modified;
+            var updatedUser = await NewsyContext.Users.FindAsync(entity.ID);
+            if (updatedUser == null)
+                return null;
 
-            try
-            {
-                await NewsyContext.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(entity.ID)) return null;
-                else throw;
-            }
+            // Assign new values to the user
+            updatedUser.Email = entity.Email;
+            updatedUser.FirstName = entity.FirstName;
+            updatedUser.LastName = entity.LastName;
+
+            // Calculate new password hash and salt
+            PasswordHasher.CreatePasswordHash(entity.Password, out byte[] passwordHash, out byte[] passwordSalt);
+            updatedUser.PasswordHash = passwordHash;
+            updatedUser.PasswordSalt = passwordSalt;
+
+            NewsyContext.Users.Update(updatedUser);
+            await NewsyContext.SaveChangesAsync();
 
             return entity;
         }

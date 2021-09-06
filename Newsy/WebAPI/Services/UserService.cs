@@ -1,16 +1,14 @@
 ﻿using Domain;
 using Microsoft.IdentityModel.Tokens;
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using WebAPI.Models;
+using WebAPI.Helpers;
 using WebAPI.Repositories.Interfaces;
 using WebAPI.Services.Interfaces;
-using WebAPI.Settings;
 using WebAPI.Settings.Interfaces;
 
 namespace WebAPI.Services
@@ -26,21 +24,40 @@ namespace WebAPI.Services
             UserRepository = userRepository;
         }
 
-        public async Task<AuthenticateResponse> AuthenticateAsync(AuthenticateRequest request)
+        public async Task<dynamic> AuthenticateAsync(User entity)
         {
-            // TODO: Verify password
-            var user = await GetByEmail(request.Email);
+            // Verify email
+            var userDb = await GetByEmailAsync(entity.Email);
+            if (userDb == null)
+                return null;
 
-            if (user == null) return null;
+            // Verify password
+            if (!PasswordHasher.VerifyPasswordHash(entity.Password, userDb.PasswordHash, userDb.PasswordSalt))
+                return null;
 
-            var token = GenerateJWTToken(user);
-            return new AuthenticateResponse(user, token);
+            var token = GenerateJWTToken(userDb);
+
+            userDb.HidePasswordRelatedData();
+
+            return new { userDb, token };
         }
 
-        public async Task<User> GetByEmail(string email)
+        public async Task<User> GetByEmailAsync(string email)
         {
             var users = await UserRepository.GetAsync();
             return users.SingleOrDefault(x => x.Email == email);
+        }
+
+        public async Task<User> RegisterAsync(User user)
+        {
+            PasswordHasher.CreatePasswordHash(user.Password,
+                                              out byte[] passwordHash,
+                                              out byte[] passwordSalt);
+
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+
+            return await UserRepository.CreateAsync(user);
         }
 
         private string GenerateJWTToken(User user)

@@ -2,13 +2,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
-using WebAPI.Models;
+using WebAPI.Helpers;
 using WebAPI.Repositories.Interfaces;
 using WebAPI.Services.Interfaces;
 
@@ -16,6 +13,7 @@ namespace WebAPI.Controllers
 {
     [Produces("application/json")]
     [Route("api/users")]
+    [Authorize]
     [ApiController]
     public class UsersController : ControllerBase
     {
@@ -35,7 +33,7 @@ namespace WebAPI.Controllers
             var result = await UserRepository.GetAsync();
             foreach (var r in result)
             {
-                r.Password = null;
+                r.HidePasswordRelatedData();
             }
             return result;
         }
@@ -56,7 +54,7 @@ namespace WebAPI.Controllers
                 return NotFound();
             }
 
-            user.Password = null;
+            user.HidePasswordRelatedData();
 
             return Ok(user);
         }
@@ -75,7 +73,13 @@ namespace WebAPI.Controllers
                 return BadRequest();
             }
 
+            // Don't allow other users to update each others data
+            if (!OwnershipValidator.ValidateOwnership(HttpContext, id))
+                return Unauthorized(new JsonResult(new { message = "You cannot update another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
+
             await UserRepository.UpdateAsync(user);
+
+            user.HidePasswordRelatedData();
 
             return NoContent();
         }
@@ -90,21 +94,27 @@ namespace WebAPI.Controllers
                 return BadRequest(ModelState);
             }
 
-            user = await UserRepository.CreateAsync(user);
+            user = await UserService.RegisterAsync(user);
 
-            var authResponse = await UserService.AuthenticateAsync(new AuthenticateRequest 
-            { 
-                Email = user.Email,
-                Password = user.Password
-            });
+            user.HidePasswordRelatedData();
 
-            user.Password = null;
+            return CreatedAtAction("GetUser", new { id = user.ID }, user);
+        }
 
-            return CreatedAtAction("GetUser", new { id = user.ID }, authResponse);
+        // POST: api/users/authenticate
+        [AllowAnonymous]
+        [Route("authenticate")]
+        [HttpPost]
+        public async Task<IActionResult> AuthenticateAsync([FromBody] User user)
+        {
+            var entityAuth = await UserService.AuthenticateAsync(user);
+            if (entityAuth == null)
+                return Unauthorized(new JsonResult(new { message = "Invalid e-mail or password!" }) { StatusCode = StatusCodes.Status401Unauthorized });
+
+            return Ok(entityAuth);
         }
 
         // DELETE: api/users/5
-        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser([FromRoute] Guid id)
         {
@@ -113,18 +123,13 @@ namespace WebAPI.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (HttpContext.User.Identity is ClaimsIdentity identity)
-            {
-                var userID = Guid.Parse(identity.Claims.First(x => x.Type == "id").Value);
-                if (userID != id)
-                {
-                    return Unauthorized(new JsonResult(new { message = "You cannot delete another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
-                }
-            }
+            // Don't allow other users to delete each other
+            if (!OwnershipValidator.ValidateOwnership(HttpContext, id))
+                return Unauthorized(new JsonResult(new { message = "You cannot delete another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
 
             await UserRepository.DeleteAsync(id);
 
-            return Ok();
+            return NoContent();
         }
     }
 }
