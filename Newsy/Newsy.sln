@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebAPI", "WebAPI\WebAPI.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "Domain\Domain.csproj", "{CF57C8A9-AEFC-40BA-8187-A226BB6B2543}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebAPI.Tests", "WebAPI.Tests\WebAPI.Tests.csproj", "{CDAE7D51-88D7-44A6-B120-C13573C7D904}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{CF57C8A9-AEFC-40BA-8187-A226BB6B2543}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF57C8A9-AEFC-40BA-8187-A226BB6B2543}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF57C8A9-AEFC-40BA-8187-A226BB6B2543}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDAE7D51-88D7-44A6-B120-C13573C7D904}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDAE7D51-88D7-44A6-B120-C13573C7D904}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDAE7D51-88D7-44A6-B120-C13573C7D904}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDAE7D51-88D7-44A6-B120-C13573C7D904}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
