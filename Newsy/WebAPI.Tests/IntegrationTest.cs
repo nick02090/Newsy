@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,9 +14,17 @@ namespace WebAPI.Tests
 {
     public class IntegrationTest
     {
-        protected readonly HttpClient TestClient;
+        #region Constants
+        private const string _mediaType = "application/json";
 
-        protected IntegrationTest()
+        private const string _testUserEmail = "test@integration.com";
+        private const string _testUserPassword = "TestyTest123!";
+        #endregion
+
+        public readonly HttpClient TestClient;
+        public User TestUser { get; private set; }
+
+        public IntegrationTest(string dbName)
         {
             var appFactory = new WebApplicationFactory<Startup>()
                 .WithWebHostBuilder(builder => 
@@ -37,49 +44,64 @@ namespace WebAPI.Tests
                         }
                         services.AddDbContext<NewsyContext>(options => 
                         {
-                            options.UseInMemoryDatabase("NewsyTest");
+                            options.UseInMemoryDatabase(dbName);
                         });
                     });
                 });
             TestClient = appFactory.CreateClient();
-            TestClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            TestClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(_mediaType));
         }
 
-        protected async Task AuthenticateAsync()
+        public async Task AuthenticateAsync()
         {
             TestClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", await GetJwtAsync());
         }
 
-        protected User TestUser { get; private set; }
+        public void Authenticate(string token)
+        {
+            TestClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+        }
 
         private async Task<string> GetJwtAsync()
         {
             // Register a test user
-            var registerRequest = new Dictionary<string, string>
+            TestUser = await CreateUser(new User 
             {
-                { "firstName", "Testy" },
-                { "lastName", "Test" },
-                { "email", "test@integration.com" },
-                { "password", "TestyTest123!" }
-            };
-            var registerRequestJson = JsonConvert.SerializeObject(registerRequest, Formatting.Indented);
-            var registerRequestString = new StringContent(registerRequestJson, Encoding.UTF8, "application/json");
-            var registerResponse = await TestClient.PostAsync("api/users", registerRequestString);
-            var registerResponseString = await registerResponse.Content.ReadAsStringAsync();
-            TestUser = JsonConvert.DeserializeObject<User>(registerResponseString);
+                FirstName = "Testy",
+                LastName = "Test",
+                Email = _testUserEmail,
+                Password = _testUserPassword
+            });
 
             // Authenticate this user (to get the token)
-            var authenticateRequest = new Dictionary<string, string>
+            return await AuthenticateUser(new User
             {
-                { "email", "test@integration.com" },
-                { "password", "TestyTest123!" }
-            };
-            var authenticateRequestJson = JsonConvert.SerializeObject(authenticateRequest, Formatting.Indented);
-            var authenticateRequestString = new StringContent(authenticateRequestJson, Encoding.UTF8, "application/json");
-            var authenticateResponse = await TestClient.PostAsync("api/users/authenticate", authenticateRequestString);
-            var authenticateResponseString = await authenticateResponse.Content.ReadAsStringAsync();
-            dynamic authenticateResponseDynamic = JsonConvert.DeserializeObject<dynamic>(authenticateResponseString);
-            return authenticateResponseDynamic.token;
+                Email = _testUserEmail,
+                Password = _testUserPassword
+            });
         }
+
+        #region User CRUD, services and other helpers
+        public static StringContent SerializeUser(User user)
+        {
+            var userJson = JsonConvert.SerializeObject(user, Formatting.Indented);
+            return new StringContent(userJson, Encoding.UTF8, _mediaType);
+        }
+
+        public async Task<User> CreateUser(User user)
+        {
+            var response = await TestClient.PostAsync("api/users", SerializeUser(user));
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<User>(content);
+        }
+
+        public async Task<string> AuthenticateUser(User user)
+        {
+            var response = await TestClient.PostAsync("api/users/authenticate", SerializeUser(user));
+            var content = await response.Content.ReadAsStringAsync();
+            dynamic contentDynamic = JsonConvert.DeserializeObject<dynamic>(content);
+            return contentDynamic.token;
+        }
+        #endregion
     }
 }
