@@ -18,7 +18,7 @@ namespace WebAPI.Tests
         private IntegrationTest CreateIntegrationTest()
         {
             dbCounter++;
-            return new IntegrationTest($"TestDb{dbCounter}");
+            return new IntegrationTest($"TestUsersDb{dbCounter}");
         }
         #endregion
 
@@ -195,7 +195,7 @@ namespace WebAPI.Tests
                 Email = "john.smith@mail.com",
                 Password = "HaHaIChangedYourPassword"
             };
-            var response = await it.TestClient.PutAsync($"api/users/{otherUser.ID}", IntegrationTest.SerializeUser(updatedOtherUser));
+            var response = await it.TestClient.PutAsync($"api/users/{otherUser.ID}", IntegrationTest.SerializeObject(updatedOtherUser));
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -230,7 +230,7 @@ namespace WebAPI.Tests
                 Email = "john.smith@mail.com",
                 Password = "HaHaIChangedYourPassword"
             };
-            var response = await it.TestClient.PutAsync($"api/users/{otherUser.ID}", IntegrationTest.SerializeUser(updatedOtherUser));
+            var response = await it.TestClient.PutAsync($"api/users/{otherUser.ID}", IntegrationTest.SerializeObject(updatedOtherUser));
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -289,6 +289,56 @@ namespace WebAPI.Tests
             await it.AuthenticateAsync();
             var getOtherUserResponse = await it.TestClient.GetAsync($"api/users/{otherUser.ID}");
             getOtherUserResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
+        [Fact]
+        public async Task DeleteUser_DeleteAllUsersArticles_NoContent()
+        {
+            // Arrange
+            var it = CreateIntegrationTest();
+            var otherUser = await it.CreateUser(new User
+            {
+                FirstName = "John",
+                LastName = "Smith",
+                Email = "john.smith@mail.com",
+                Password = "JohnSmith123!"
+            });
+            var otherUserToken = await it.AuthenticateUser(new User
+            {
+                ID = otherUser.ID,
+                Email = "john.smith@mail.com",
+                Password = "JohnSmith123!"
+            });
+            it.Authenticate(otherUserToken);
+            _ = await it.CreateArticle(new Article
+            {
+                Author = new User
+                {
+                    ID = otherUser.ID,
+                    Email = "john.smith@mail.com",
+                    Password = "JohnSmith123!"
+                },
+                Body = "Blah blah blah...",
+                Description = "My best blah ever",
+                Title = "King Blah"
+            });
+
+            // Act
+            var response = await it.TestClient.DeleteAsync($"api/users/{otherUser.ID}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            // Extra check if the user is really deleted
+            await it.AuthenticateAsync();
+            var getOtherUserResponse = await it.TestClient.GetAsync($"api/users/{otherUser.ID}");
+            getOtherUserResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+            // Check if users articles are deleted
+            var getOtherUsersArticlesResponse = await it.TestClient.GetAsync($"api/articles?authorID={otherUser.ID}");
+            var getOtherUsersArticlesContent = await getOtherUsersArticlesResponse.Content.ReadAsStringAsync();
+            var otherUsersArticles = JsonConvert.DeserializeObject<List<Article>>(getOtherUsersArticlesContent);
+            otherUsersArticles.Should().BeEmpty();
         }
         #endregion
     }

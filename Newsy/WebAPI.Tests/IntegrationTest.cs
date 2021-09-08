@@ -81,26 +81,35 @@ namespace WebAPI.Tests
             });
         }
 
-        #region User CRUD, services and other helpers
-        public static StringContent SerializeUser(User user)
+        public static StringContent SerializeObject(object objectData)
         {
-            var userJson = JsonConvert.SerializeObject(user, Formatting.Indented);
-            return new StringContent(userJson, Encoding.UTF8, _mediaType);
+            var json = JsonConvert.SerializeObject(objectData, Formatting.Indented);
+            return new StringContent(json, Encoding.UTF8, _mediaType);
         }
 
+        #region User CRUD, services and other helpers
         public async Task<User> CreateUser(User user)
         {
-            var response = await TestClient.PostAsync("api/users", SerializeUser(user));
+            var response = await TestClient.PostAsync("api/users", SerializeObject(user));
             var content = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<User>(content);
         }
 
         public async Task<string> AuthenticateUser(User user)
         {
-            var response = await TestClient.PostAsync("api/users/authenticate", SerializeUser(user));
+            var response = await TestClient.PostAsync("api/users/authenticate", SerializeObject(user));
             var content = await response.Content.ReadAsStringAsync();
             dynamic contentDynamic = JsonConvert.DeserializeObject<dynamic>(content);
             return contentDynamic.token;
+        }
+        #endregion
+
+        #region Article CRUD, services and other helpers
+        public async Task<Article> CreateArticle(Article article)
+        {
+            var response = await TestClient.PostAsync("api/articles", SerializeObject(article));
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<Article>(content);
         }
         #endregion
     }

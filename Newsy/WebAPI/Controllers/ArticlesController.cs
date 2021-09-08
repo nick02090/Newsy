@@ -34,20 +34,34 @@ namespace WebAPI.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ICollection<Article>))]
-        public async Task<IActionResult> GetArticles([FromQuery] Guid authorID, [FromQuery] string authorLastName, [FromQuery] DateTime createdOn, [FromQuery] string titlePart)
+        public async Task<IActionResult> GetArticles([FromQuery] Guid? authorID, [FromQuery] string authorLastName, [FromQuery] DateTime? createdOn, [FromQuery] string titlePart)
         {
             var result = await ArticleRepository.GetAsync();
 
-            if (authorID != null)
-                result = result.Where(x => x.Author.ID.Equals(authorID)).ToList();
-            if (authorLastName != null)
-                result = result.Where(x => x.Author.LastName.Equals(authorLastName)).ToList();
-            if (createdOn != null)
-                result = result.Where(x => x.CreatedOn.Date.Equals(createdOn.Date)).ToList();
-            if (titlePart != null)
+            if (authorID.HasValue)
+                result = result.Where(x => x.Author != null && x.Author.ID.Equals(authorID.Value)).ToList();
+            if (!string.IsNullOrEmpty(authorLastName) && !string.IsNullOrWhiteSpace(authorLastName))
+                result = result.Where(x => x.Author != null && x.Author.LastName.Equals(authorLastName)).ToList();
+            if (createdOn.HasValue)
+                result = result.Where(x => x.CreatedOn.Date.Equals(createdOn.Value.Date)).ToList();
+            if (!string.IsNullOrEmpty(titlePart) && !string.IsNullOrWhiteSpace(titlePart))
                 result = result.Where(x => x.Title.Contains(titlePart)).ToList();
 
-            return Ok(result);
+            return Ok(result.Select(x => new Article {
+                Title = x.Title,
+                ID = x.ID,
+                Body = x.Body,
+                CreatedOn = x.CreatedOn,
+                Description = x.Description,
+                LastEditedOn = x.LastEditedOn,
+                Author = new User
+                {
+                    ID = x.Author.ID,
+                    Email = x.Author.Email,
+                    FirstName = x.Author.FirstName,
+                    LastName = x.Author.LastName
+                }
+            }));
         }
 
         // GET: api/articles/5
@@ -70,7 +84,22 @@ namespace WebAPI.Controllers
                 return NotFound();
             }
 
-            return Ok(article);
+            return Ok(new Article 
+            { 
+                ID = article.ID,
+                Title = article.Title,
+                Body = article.Body,
+                CreatedOn = article.CreatedOn,
+                Description = article.Description,
+                LastEditedOn = article.LastEditedOn,
+                Author = new User
+                {
+                    ID = article.Author.ID,
+                    Email = article.Author.Email,
+                    FirstName = article.Author.FirstName,
+                    LastName = article.Author.LastName
+                }
+            });
         }
 
         // PUT: api/articles/5
@@ -91,7 +120,7 @@ namespace WebAPI.Controllers
             }
 
             // Don't allow other users to update each others data
-            if (!OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
+            if (article.Author == null || !OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
                 return Unauthorized(new JsonResult(new { message = "You cannot update article from another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
 
             await ArticleRepository.UpdateAsync(article);
@@ -112,7 +141,7 @@ namespace WebAPI.Controllers
             }
 
             // Check if the creator of the article is current user
-            if (!OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
+            if (article.Author == null || !OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
                 return Unauthorized(new JsonResult(new { message = "You cannot create article as another user!" }) { StatusCode = StatusCodes.Status401Unauthorized });
 
             article.Author = await UserRepository.GetAsync(article.Author.ID);
@@ -140,7 +169,7 @@ namespace WebAPI.Controllers
             var article = await ArticleRepository.GetAsync(id);
 
             // Don't allow other users to delete each others articles
-            if (!OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
+            if (article.Author == null || !OwnershipValidator.ValidateOwnership(HttpContext, article.Author.ID))
                 return Unauthorized(new JsonResult(new { message = "You cannot delete another users article!" }) { StatusCode = StatusCodes.Status401Unauthorized });
 
             await ArticleRepository.DeleteAsync(id);
